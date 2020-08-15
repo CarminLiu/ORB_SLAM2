@@ -22,6 +22,9 @@
 #include "Converter.h"
 #include "ORBmatcher.h"
 #include <thread>
+#include "Thirdparty/aruco/aruco/aruco.h"
+#include "Thirdparty/aruco/aruco/cameraparameters.h"
+#include "Thirdparty/aruco/aruco/markerdetector.h"
 
 namespace ORB_SLAM2
 {
@@ -57,7 +60,7 @@ Frame::Frame(const Frame &frame)
         SetPose(frame.mTcw);
 }
 
-
+// stereo
 Frame::Frame(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timeStamp, ORBextractor* extractorLeft, ORBextractor* extractorRight, ORBVocabulary* voc, cv::Mat &K, cv::Mat &distCoef, const float &bf, const float &thDepth)
     :mpORBvocabulary(voc),mpORBextractorLeft(extractorLeft),mpORBextractorRight(extractorRight), mTimeStamp(timeStamp), mK(K.clone()),mDistCoef(distCoef.clone()), mbf(bf), mThDepth(thDepth),
      mpReferenceKF(static_cast<KeyFrame*>(NULL))
@@ -114,6 +117,19 @@ Frame::Frame(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timeSt
     mb = mbf/fx;
 
     AssignFeaturesToGrid();
+
+    // aruco::MarkerMapPoseTracker
+    aruco::CameraParameters camera(mK, mDistCoef, cv::Size(mnMaxX, mnMaxY));
+    // camera.setParams
+    aruco::MarkerDetector detector;
+    detector.setDictionary("ARUCO_MIP_36h12");
+    vector<aruco::Marker> vMarker;
+    detector.detect(imLeft, vMarker, camera, 0.18);
+    // vector<aruco::Marker> vMarker = detector.detect(imLeft);
+    for(auto m: vMarker){
+        cout<<m<<endl;
+        // aruco::CvDrawingUtils::draw3dAxis(imLeft, m, camera);
+    }
 }
 
 Frame::Frame(const cv::Mat &imGray, const cv::Mat &imDepth, const double &timeStamp, ORBextractor* extractor,ORBVocabulary* voc, cv::Mat &K, cv::Mat &distCoef, const float &bf, const float &thDepth)

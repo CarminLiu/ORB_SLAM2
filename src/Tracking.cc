@@ -307,7 +307,12 @@ void Tracking::Track()
                 // Local Mapping might have changed some MapPoints tracked in last frame
                 CheckReplacedInLastFrame();
 
-                if(mVelocity.empty() || mCurrentFrame.mnId<mnLastRelocFrameId+2)
+                // add TrackByAruco() !!! 这里忽略了很多条件，首先假设第一二帧都有marker
+                if(!mCurrentFrame.mvMarkers.empty() && !mLastFrame.mvMarkers.empty())
+                {
+                    bOK = TrackByAruco();
+                }
+                else if(mVelocity.empty() || mCurrentFrame.mnId<mnLastRelocFrameId+2)
                 {
                     bOK = TrackReferenceKeyFrame();
                 }
@@ -925,6 +930,76 @@ bool Tracking::TrackWithMotionModel()
     {
         mbVO = nmatchesMap<10;
         return nmatches>20;
+    }
+
+    return nmatchesMap>=10;
+}
+
+bool Tracking::TrackByAruco()
+{
+    cout <<"Track By Aruco ======="<<endl;
+    // Compute Bag of Words vector
+    mCurrentFrame.ComputeBoW();
+
+    // We perform first an ORB matching with the reference keyframe
+    // If enough matches are found we setup a PnP solver
+    ORBmatcher matcher(0.7,true);
+    vector<MapPoint*> vpMapPointMatches;
+
+    int nmatches = matcher.SearchByBoW(mpReferenceKF,mCurrentFrame,vpMapPointMatches);
+
+    if(nmatches<15)
+        return false;
+
+    mCurrentFrame.mvpMapPoints = vpMapPointMatches;
+
+    // int numAruco = mCurrentFrame.mvMarkers.size();
+    int CurArucoId = mCurrentFrame.mvMarkers[0].id;
+    int LastArucoId = -1;
+    for(int i=0; i<mLastFrame.mvMarkers.size(); i++)
+    {
+        if(mLastFrame.mvMarkers[i].id = CurArucoId)
+        {
+            LastArucoId = i;
+            break;
+        }
+    }
+    if(LastArucoId = -1)
+        return false;
+    
+    cv::Mat Tl, Tc;
+    cv::Mat Rlast = mLastFrame.mvMarkers[LastArucoId].Rvec;
+    cv::Rodrigues(Rlast, Tl.rowRange(0,3).colRange(0,3));
+    Tl.rowRange(0,3).col(3) = mLastFrame.mvMarkers[LastArucoId].Tvec;
+    cv::Mat Rcur = mCurrentFrame.mvMarkers[0].Rvec.clone();
+    cv::Rodrigues(Rcur, Tc.rowRange(0,3).colRange(0,3));
+    Tc.rowRange(0,3).col(3) = mCurrentFrame.mvMarkers[0].Tvec.clone();
+    
+    cv::Mat Ttmp = Tc * Tl.t();
+
+    mCurrentFrame.SetPose(Ttmp * mLastFrame.mTcw );
+
+    Optimizer::PoseOptimization(&mCurrentFrame);
+
+    // Discard outliers
+    int nmatchesMap = 0;
+    for(int i =0; i<mCurrentFrame.N; i++)
+    {
+        if(mCurrentFrame.mvpMapPoints[i])
+        {
+            if(mCurrentFrame.mvbOutlier[i])
+            {
+                MapPoint* pMP = mCurrentFrame.mvpMapPoints[i];
+
+                mCurrentFrame.mvpMapPoints[i]=static_cast<MapPoint*>(NULL);
+                mCurrentFrame.mvbOutlier[i]=false;
+                pMP->mbTrackInView = false;
+                pMP->mnLastFrameSeen = mCurrentFrame.mnId;
+                nmatches--;
+            }
+            else if(mCurrentFrame.mvpMapPoints[i]->Observations()>0)
+                nmatchesMap++;
+        }
     }
 
     return nmatchesMap>=10;

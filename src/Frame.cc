@@ -50,7 +50,8 @@ Frame::Frame(const Frame &frame)
      mpReferenceKF(frame.mpReferenceKF), mnScaleLevels(frame.mnScaleLevels),
      mfScaleFactor(frame.mfScaleFactor), mfLogScaleFactor(frame.mfLogScaleFactor),
      mvScaleFactors(frame.mvScaleFactors), mvInvScaleFactors(frame.mvInvScaleFactors),
-     mvLevelSigma2(frame.mvLevelSigma2), mvInvLevelSigma2(frame.mvInvLevelSigma2)
+     mvLevelSigma2(frame.mvLevelSigma2), mvInvLevelSigma2(frame.mvInvLevelSigma2),
+     mvMarkers(frame.mvMarkers)
 {
     for(int i=0;i<FRAME_GRID_COLS;i++)
         for(int j=0; j<FRAME_GRID_ROWS; j++)
@@ -123,10 +124,9 @@ Frame::Frame(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timeSt
     // camera.setParams
     aruco::MarkerDetector detector;
     detector.setDictionary("ARUCO_MIP_36h12");
-    vector<aruco::Marker> vMarker;
-    detector.detect(imLeft, vMarker, camera, 0.18);
+    detector.detect(imLeft, mvMarkers, camera, 0.18);
     // vector<aruco::Marker> vMarker = detector.detect(imLeft);
-    for(auto m: vMarker){
+    for(auto m: mvMarkers){
         cout<<m<<endl;
         // aruco::CvDrawingUtils::draw3dAxis(imLeft, m, camera);
     }

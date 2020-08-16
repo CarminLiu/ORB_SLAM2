@@ -31,6 +31,7 @@
 #include "ORBextractor.h"
 
 #include <opencv2/opencv.hpp>
+#include "Thirdparty/aruco/aruco/aruco.h"
 
 namespace ORB_SLAM2
 {
@@ -187,6 +188,8 @@ public:
 
     static bool mbInitialComputations;
 
+    //aruco
+    vector<aruco::Marker> mvMarkers;
 
 private:
 

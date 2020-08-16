@@ -131,6 +131,8 @@ protected:
     bool TrackReferenceKeyFrame();
     void UpdateLastFrame();
     bool TrackWithMotionModel();
+    // add ---------------------------------------
+    bool TrackByAruco();
 
     bool Relocalization();
 
